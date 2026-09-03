@@ -1,7 +1,7 @@
 %Simple unpowered projectile model to get simple range of projectile down
 
-clear 
-close all
+clear all
+close
 clc
 
 mass = 120; %kg
@@ -19,7 +19,7 @@ alt = 1; %m
 alpha = 20; %degrees
 total_vel = Mach*a;
 
-dt = .001; %sec
+dt = .0001; %sec
 
 x_accel = 0;
 y_accel = 0;
@@ -48,10 +48,11 @@ while alt > 0
     %CD0 = friction_drag(total_vel, alt, ref_length);
 
     CL = .01;
-    CD = .01;
-    Lift = .5*rho*x_vel^2*S_ref*CL;
-    Drag = .5*rho*x_vel^2*S_ref*CD;
+    CD = .005;
+    Lift = .5*rho*total_vel^2*S_ref*CL;
+    Drag = .5*rho*total_vel^2*S_ref*CD;
     %Drag = .5*rho*total_vel^2*S_ref*CDi + .5*rho*total_vel^2*S_ref*CD0;
+
 
     x_accel = x_accel - Drag/mass*dt;
     y_accel = y_accel + (Lift/mass)*dt - g*dt;
@@ -76,8 +77,4 @@ xlabel('X Position (m)')
 ylabel('Y Position (m)')
 title('Projectile Trajectory')
 
-figure()
-plot(time_vec, x_pos_vec, 'LineWidth', 1, 'Color', 'Blue')
-xlabel('Time (s)')
-ylabel('X Position (m)')
-title('Time')
+
