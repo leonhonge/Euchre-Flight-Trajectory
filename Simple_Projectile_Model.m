@@ -65,7 +65,7 @@ while alt > 0
 
     alt = y_pos_vec(index);
     total_vel = sqrt(x_vel^2 + y_vel^2);
-    alpha = tan(y_vel/x_vel);
+    %alpha = tan(y_vel/x_vel);
     index = index+1;
     [T, a, P, rho] = atmoscoesa(alt); %[K, m/s, Pa, kg/m^3]
 end
