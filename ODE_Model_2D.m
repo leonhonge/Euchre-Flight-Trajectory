@@ -1,89 +1,15 @@
-%2D ODE Model for simple trajectory analysis
+%2D ODE Model for simple trajectory analysis, model is a 3DOF point mass glider
 
 clear
 clc
 close all
 
-function state_dot = ODE_2D(time, state)
-    %state = [V, alpha, h, x]'
-    %V = veloctiy
-    %gamma = flight path angle (not specific heat ratio ik it gets
-    %confusing cause specific heat ratio is used later but deal with it,
-    %you can figure it out
-    %h = height
-    %x = distance
-    m = 120; %kg
-    S = 1/2*(.4^2)*pi;
-    g = 9.8; %m/s^2
-    
-    [~, a, ~, rho] = atmoscoesa(state(3));
-
-    Mach = state(1)/a;
-
-    %empircal formula for CL/CD for testing purposes
-    CD0 = .05;
-    gamma = 1.4;
-    alpha = deg2rad(linspace(0, 40, 1000));
-    Cp_max = (2/(gamma*Mach^2))*((((gamma+1)/2)*Mach^2)^((gamma)/(gamma-1))*((gamma + 1)/(2*gamma*Mach^2 - (gamma - 1)))^(1/(gamma-1))-1);
-    CL_test = Cp_max.*sin(alpha).^2.*cos(alpha);
-    CD_test = Cp_max.*sin(alpha).^3 + CD0;
-
-    L_D = CL_test ./ CD_test; % Calculate lift-to-drag ratio
-    [~, index] = max(L_D); % Find maximum L/D and its index
-    optimalAlpha = alpha(index); % Get the angle of attack for maximum L/D
-
-    %logic for trimming projectile at max height
-    if (state(3) > 28000)
-        state(2) = 0;
-    end
-
-    %reset alpha to 0 as default;
-    alpha = 0;
-
-    %logic for trimming vehicle
-    h_dot = state(1)*sin(state(2));
-    if(h_dot < 0)
-       alpha = optimalAlpha;
-    end
-
-    
-    %logic for keeping speed above Mach 3
-    %{
-    [~, a_ground, ~, ~] = atmoscoesa(0);
-    impact_speed = 3*a_ground;
-    if (state(1) < impact_speed)
-        num = -2*m*g*sin(state(2));
-        den = rho*state(1)^2*S;
-        alpha = asin(nthroot((((num/den) - CD0)/Cp_max), 3));
-    end
-    %}
-    
-    
-    %CL and CD estimations from Estimated Aerodynaics of All-Body
-    %Hypersonic Aircraft Configurations, Note: CD is ignoring friction
-    %drag, only accounting for estimation of induced drag plus a .05 estimation of friction drag, to get friction
-    %drag need to integrate over body surface, will want to do later but
-    %hoping that CFD results can be gotten and validated by the point where
-    %that would be necessary
-
-    %CL = Cp_max*sin(alpha)^2*cos(alpha);
-    beta = (abs(Mach^2 - 1))^(1/2);
-    C1 = 4.17/beta - .13;
-    C2 = exp(.955 - (4.35/Mach));
-
-    CL = C1*sin(alpha) + C2*sin(alpha)^2;
-    %CD = Cp_max*sin(alpha)^3 + CD0;
-    Km = 1;
-    CD = Km*CL*tan(alpha) + .05;
-
-    D = 1/2*rho*state(1)^2*S*CD;
-    L = 1/2*rho*state(1)^2*S*CL;
-
-    state_dot = [-D/m - g*sin(state(2));
-                 L/(m*state(1)) - (g/state(1))*cos(state(2));
-                 state(1)*sin(state(2));
-                 state(1)*cos(state(2))];
-
+%function to stop integration when h_dot is negative for the first time
+%(switch from climb to cruise state)
+function [value, isterminal, direction] = cruise_start(t, state)
+    value = (state(1)*sin(state(2)) <= 0);
+    isterminal = 1;
+    direction = 0;
 end
 
 %event to stop integration when the ground is hit
@@ -93,45 +19,109 @@ function [value, isterminal, direction] = ground(t, state)
     direction = 0;
 end
 
+%event to enter dive to reach Mach 3 again
+function [value, isterminal, direction] = dive(t, state)
+    value = (state(3) <= 7000);
+    isterminal = 1;
+    direction = 0;
+end
+
+%event to hold Mach 3 once it is reached
+function [value, isterminal, direction] = hold_speed(t, state)
+    [~, a, ~, ~] = atmoscoesa(0);
+    impact_speed = 3*a;
+    value = (state(1) >= impact_speed);
+    isterminal = 1;
+    direction = 0;
+end
+
 Mach_init = 8;
-launch_angle = deg2rad(20);
+launch_angle = deg2rad(25);
 init_height = 1;
 [~, a, ~, ~] = atmoscoesa(init_height); %m/s
 V0 = Mach_init*a;
 
+state_0_climb= [V0; launch_angle; init_height; 0];
+time_range_climb = [0 100];
+options_climb = odeset('Events', @cruise_start);
 
-state_0 = [V0; launch_angle; init_height; 0];
-time_range = [0 240];
-options = odeset('Events', @ground);
+[t_climb, state_climb] = ode45(@ODE_climb, time_range_climb, state_0_climb, options_climb);
 
-[t, state] = ode45(@ODE_2D, time_range, state_0, options);
+state_0_cruise = state_climb(end, :);
+time_range_cruise = [t_climb(end), 240];
+options_cruise = odeset('Events', @hold_speed);
+
+[t_cruise, state_cruise] = ode45(@ODE_cruise, time_range_cruise, state_0_cruise, options_cruise);
+
+%{
+state_0_dive = state_cruise(end, :);
+%point downwards to enter dive
+state_0_dive(2) = deg2rad(-90);
+time_range_dive = [t_cruise(end), 240];
+options_dive = odeset('Events', @hold_speed);
+
+[t_dive, state_dive] = ode45(@ODE_dive, time_range_dive, state_0_dive, options_dive);
+%}
+
+state_0_hold = state_cruise(end, :);
+time_range_hold = [t_cruise(end), 240];
+options_hold = odeset('Events', @ground);
+[t_hold_speed, state_hold_speed] = ode45(@ODE_hold_velocity, time_range_hold, state_0_hold, options_hold);
+
+t_total = [t_climb; t_cruise(2:end); t_hold_speed(2:end)];        
+state_total = [state_climb; state_cruise(2:end,:); state_hold_speed(2:end,:)];
 
 figure()
-plot(t, state(:,1), 'LineWidth', 1, 'Color', 'Blue')
+hold on
+plot(t_total, state_total(:,1), 'LineWidth', 1, 'Color', 'Blue')
+plot(t_climb(end), state_climb(end, 1), 'o', 'LineWidth', 2)
+plot(t_cruise(end), state_cruise(end, 1), 'o', 'LineWidth', 2)
 xlabel('Time (s)')
 ylabel('Velocity (m/s)')
 title('2D Trajectory Velocity')
+legend('Velocity', 'Climb End', 'Cruise End')
+hold off
 
 figure()
-plot(t, rad2deg(state(:,2)), 'LineWidth', 1, 'Color', 'Blue')
+hold on
+plot(t_total, rad2deg(state_total(:,2)), 'LineWidth', 1, 'Color', 'Blue')
+plot(t_climb(end), rad2deg(state_climb(end, 2)), 'o', 'LineWidth', 2)
+plot(t_cruise(end), rad2deg(state_cruise(end, 2)), 'o', 'LineWidth', 2)
 xlabel('Time (s)')
 ylabel('Flight Path Angle (deg)')
 title('2D Trajectory Flight Path Angle')
+legend('Flight Path', 'Climb End', 'Cruise End')
+hold off
 
 figure()
-plot(t, state(:,3), 'LineWidth', 1, 'Color', 'Blue')
+hold on
+plot(t_total, state_total(:,3), 'LineWidth', 1, 'Color', 'Blue')
+plot(t_climb(end), state_climb(end, 3), 'o', 'LineWidth', 2)
+plot(t_cruise(end), state_cruise(end, 3), 'o', 'LineWidth', 2)
 xlabel('Time (s)')
 ylabel('Height (m)')
 title('2D Trajectory Height')
+legend('Height', 'Climb End', 'Cruise End')
+hold off
 
 figure()
-plot(t, state(:,4), 'LineWidth', 1, 'Color', 'Blue')
+hold on
+plot(t_total, state_total(:,4), 'LineWidth', 1, 'Color', 'Blue')
+plot(t_climb(end), state_climb(end, 4), 'o', 'LineWidth', 2)
+plot(t_cruise(end), state_cruise(end, 4), 'o', 'LineWidth', 2)
 xlabel('Time (s)')
 ylabel('Position (m)')
 title('2D Trajectory Position')
+legend('Vehicle Position', 'Climb End', 'Cruise End')
+hold off
 
 figure()
-plot(state(:,4), state(:,3), 'LineWidth', 1, 'Color', 'Blue')
+hold on
+plot(state_total(:,4), state_total(:,3), 'LineWidth', 1, 'Color', 'Blue')
+plot(state_climb(end, 4), state_climb(end, 3), 'o', 'LineWidth', 2)
+plot(state_cruise(end, 4), state_cruise(end, 3), 'o', 'LineWidth', 2)
 xlabel('Position (m)')
 ylabel('Height (m)')
 title('Trajectory Simulation')
+legend('Trajectory', 'Climb End', 'Cruise End')
+hold off
