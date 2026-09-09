@@ -53,7 +53,7 @@ options_cruise = odeset('Events', @hold_speed);
 
 [t_cruise, state_cruise] = ode45(@ODE_cruise, time_range_cruise, state_0_cruise, options_cruise);
 
-
+%{
 state_0_dive = state_cruise(end, :);
 %point downwards to enter dive
 state_0_dive(2) = deg2rad(-90);
@@ -61,7 +61,7 @@ time_range_dive = [t_cruise(end), 240];
 options_dive = odeset('Events', @hold_speed);
 
 [t_dive, state_dive] = ode45(@ODE_dive, time_range_dive, state_0_dive, options_dive);
-
+%}
 
 state_0_hold = state_cruise(end, :);
 time_range_hold = [t_cruise(end), 240];

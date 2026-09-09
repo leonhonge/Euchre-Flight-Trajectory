@@ -1,6 +1,6 @@
 function state_dot = ODE_cruise(time, state)
     m = 120; %kg
-    S = 1/2*(.3^2)*pi;
+    S = (.3^2)*pi;
     g = 9.8; %m/s^2
     
     [~, a, ~, rho] = atmoscoesa(state(3));
@@ -8,7 +8,7 @@ function state_dot = ODE_cruise(time, state)
     Mach = state(1)/a;
     Cp_max = (2/(gamma*Mach^2))*((((gamma+1)/2)*Mach^2)^((gamma)/(gamma-1))*((gamma + 1)/(2*gamma*Mach^2 - (gamma - 1)))^(1/(gamma-1))-1);
 
-    alpha = optimalAlpha(Mach);
+    alpha = deg2rad(optimalAlpha(Mach));
 
     CL = Cp_max*sin(alpha)^2*cos(alpha);
     CD0 = .05;

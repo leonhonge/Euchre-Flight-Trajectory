@@ -9,12 +9,25 @@ function state_dot = ODE_hold_velocity(time, state)
     Cp_max = (2/(gamma*Mach^2))*((((gamma+1)/2)*Mach^2)^((gamma)/(gamma-1))*((gamma + 1)/(2*gamma*Mach^2 - (gamma - 1)))^(1/(gamma-1))-1);
     CD0 = .05;
 
-    num = -2*m*g*sin(state(2));
-    den = rho*state(1)^2*S;
-    alpha = asin(nthroot((((num/den) - CD0)/Cp_max), 3));
+% CD required to make V_dot = 0
+CD_req = -2*m*g*sin(state(2)) / ...
+         (rho*state(1)^2*S);
 
-    CL = Cp_max*sin(alpha)^2*cos(alpha);
-    CD = Cp_max*sin(alpha)^3 + CD0;
+% Minimum achievable drag coefficient
+CD_min = CD0;
+
+if CD_req >= CD_min
+    % Constant velocity is physically achievable
+    alpha = asin(((CD_req - CD0)/Cp_max)^(1/3));
+
+else
+    % Cannot hold velocity without thrust
+    % Go to minimum drag and allow V to decrease
+    alpha = 0;
+end
+
+CL = Cp_max*sin(alpha)^2*cos(alpha);
+CD = Cp_max*sin(alpha)^3 + CD0;
 
     D = 1/2*rho*state(1)^2*S*CD;
     L = 1/2*rho*state(1)^2*S*CL;
