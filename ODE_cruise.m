@@ -1,6 +1,6 @@
 function state_dot = ODE_cruise(time, state)
     m = 120; %kg
-    S = (.3^2)*pi;
+    S = .5*(.3^2)*pi;
     g = 9.8; %m/s^2
     
     [~, a, ~, rho] = atmoscoesa(state(3));
@@ -8,7 +8,23 @@ function state_dot = ODE_cruise(time, state)
     Mach = state(1)/a;
     Cp_max = (2/(gamma*Mach^2))*((((gamma+1)/2)*Mach^2)^((gamma)/(gamma-1))*((gamma + 1)/(2*gamma*Mach^2 - (gamma - 1)))^(1/(gamma-1))-1);
 
-    alpha = deg2rad(optimalAlpha(Mach));
+    % Lift required to keep gamma approximately constant
+L_req = m*g*cos(state(2));
+
+CL_req = 2*L_req / ...
+         (rho*state(1)^2*S);
+
+% Search allowed alpha range
+alpha_test = deg2rad(linspace(0,40,1000));
+
+CL_test = Cp_max .* ...
+          sin(alpha_test).^2 .* ...
+          cos(alpha_test);
+
+% Pick alpha giving closest CL
+[~, idx] = min(abs(CL_test - CL_req));
+
+alpha = alpha_test(idx);
 
     CL = Cp_max*sin(alpha)^2*cos(alpha);
     CD0 = .05;

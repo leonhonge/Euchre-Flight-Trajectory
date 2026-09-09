@@ -9,7 +9,7 @@ function state_dot = ODE_climb(time, state)
     %Note: This is only for the climb section of flight, there will be two
     %other ODE's for cruise and for descent
     m = 120; %kg
-    S = 1/2*(.3^2)*pi;
+    S = .5*(.3^2)*pi;
     g = 9.8; %m/s^2
     
     [~, a, ~, rho] = atmoscoesa(state(3));
