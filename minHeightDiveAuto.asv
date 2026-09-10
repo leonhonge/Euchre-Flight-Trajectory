@@ -1,0 +1,39 @@
+
+
+%{
+state_dive = vel, angle, init_height
+
+state_0_dive = state_cruise(end, :);
+%point downwards to enter dive
+state_0_dive(2) = deg2rad(-90);
+time_range_dive = [t_cruise(end), 240];
+options_dive = odeset('Events', @hold_speed);
+
+[t_dive, state_dive] = ode45(@ODE_dive, time_range_dive, state_0_dive, options_dive);
+%}
+
+function [value, isterminal, direction] = dive_end(state)
+
+[~, a, ~, ~] = atmoscoesa(0);
+impact_speed = 3*a;
+
+value = [ ...
+    state(1) - impact_speed;  % Event 1: Mach 3
+    state(3)                  % Event 2: ground
+    ];
+
+isterminal = [1; 1];
+
+direction = [ ...
+    1;   % accelerating upward through Mach 3
+    -1    % descending through h = 0
+    ];
+
+end
+
+MACH_3 = 1029;
+
+time_range_dive = [0, 240];
+
+options_dive = odeset('Events', @dive_end)
+
