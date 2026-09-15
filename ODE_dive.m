@@ -1,6 +1,6 @@
 function state_dot = ODE_dive(time, state)
     m = 120; %kg
-    S = .5*(.3^2)*pi;
+    S = (.2^2)*pi;
     g = 9.8; %m/s^2
     
     [~, a, ~, rho] = atmoscoesa(state(3));

@@ -1,6 +1,6 @@
 function state_dot = ODE_hold_velocity(time, state)
     m = 120; %kg
-    S = 1/2*(.3^2)*pi;
+    S = (.2^2)*pi;
     g = 9.8; %m/s^2
     
     [~, a, ~, rho] = atmoscoesa(state(3));

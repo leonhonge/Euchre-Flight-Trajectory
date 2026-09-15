@@ -41,7 +41,7 @@ function [value, isterminal, direction] = dive(t, state)
 end
 
 Mach_init = 8;
-launch_angle = deg2rad(30);
+launch_angle = deg2rad(20);
 init_height = 1;
 [~, a, ~, ~] = atmoscoesa(init_height); %m/s
 V0 = Mach_init*a;
@@ -75,7 +75,6 @@ options_cruise = odeset(solver_options, 'Events', @hold_speed);
 if isempty(te_cruise)
     error('Cruise never reached the 7000 m hold speed altitude.');
 end
-
 
 state_0_hold = state_cruise(end, :);
 time_range_hold = [t_cruise(end), t_cruise(end) + 240];

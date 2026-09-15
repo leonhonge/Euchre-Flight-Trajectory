@@ -16,7 +16,7 @@ function [value, isterminal, direction] = ground(t, state)
 end
 
 function [value, isterminal, direction] = hold_speed(t, state)
-    value = state(3) - 20000;
+    value = state(3) - 7000;
     isterminal = 1;
     direction = -1;
 end
@@ -24,10 +24,10 @@ end
 function [value, isterminal, direction] = dive(t, state)
 
     [~, a, ~, ~] = atmoscoesa(0);
-    impact_speed = 4*a;
+    impact_speed = 3*a;
 
     value = [ ...
-        state(1) - 10;  % Event 1: Mach 3
+        state(1) - impact_speed;  % Event 1: Mach 3
         state(3)                  % Event 2: ground
     ];
 
@@ -182,5 +182,5 @@ end
 xlabel('Horizontal Position (m)');
 ylabel('Height (m)');
 title('Trajectory Simulation');
-legend('show');
+legend('show', Location='best');
 hold off
